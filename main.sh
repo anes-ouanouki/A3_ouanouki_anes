@@ -18,7 +18,9 @@ load_config() {
     REPORT_DIR="$SCRIPT_DIR/reports"
     LOG_DIR="$SCRIPT_DIR/logs"
     RECIPIENT_EMAIL=""
+    EMAIL_FROM=""
     MSMTP_ACCOUNT="gmail"
+    MSMTP_CONFIG=""
     REMOTE_USER=""
     REMOTE_HOST=""
     REMOTE_REPORT_DIR=""
@@ -275,7 +277,10 @@ remote_menu() {
                 RU=${RU:-$REMOTE_USER}
                 read -rp "Remote host [${REMOTE_HOST}]: " RH
                 RH=${RH:-$REMOTE_HOST}
-                remote_send_report "$RF" "$RU" "$RH"
+                RD_DEFAULT=$(remote_report_dir_default "$RU")
+                read -rp "Remote dir [${RD_DEFAULT}]: " RD
+                RD=${RD:-$RD_DEFAULT}
+                remote_send_report "$RF" "$RU" "$RH" "$RD"
                 read -rp "Press Enter to continue..."
                 ;;
             2)

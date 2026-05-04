@@ -22,6 +22,31 @@ quote_remote_path() {
     echo "$1" | sed "s/'/'\\\\''/g"
 }
 
+remote_report_dir_default() {
+    local user=${1:-$REMOTE_USER}
+    local dir=${REMOTE_REPORT_DIR:-reports}
+    local owner
+
+    case "$dir" in
+        /home/*/reports)
+            owner=${dir#/home/}
+            owner=${owner%%/*}
+            if [ -n "$user" ] && [ "$owner" != "$user" ]; then
+                printf '%s\n' "reports"
+                return
+            fi
+            ;;
+        /root/reports)
+            if [ -n "$user" ] && [ "$user" != "root" ]; then
+                printf '%s\n' "reports"
+                return
+            fi
+            ;;
+    esac
+
+    printf '%s\n' "${dir:-reports}"
+}
+
 # This section sends the chosen report to another machine.
 # it creates the remote folder, copies the report, and also copies the hash,
 # so the remote side receives both the file and its integrity check.
@@ -29,14 +54,19 @@ remote_send_report() {
     local file
     local user=${2:-$REMOTE_USER}
     local host=${3:-$REMOTE_HOST}
-    local dir=${4:-$REMOTE_REPORT_DIR}
+    local dir=$4
     local hash
     local qdir
+    local remote_base
+    local remote_file_target
+    local remote_hash_target
 
     file=$(resolve_report_file "$1") || {
         echo "[!] Invalid report file"
         return 1
     }
+
+    dir=${dir:-$(remote_report_dir_default "$user")}
 
     [ -n "$user" ] && [ -n "$host" ] && [ -n "$dir" ] || {
         echo "[!] Missing remote config"
@@ -47,6 +77,9 @@ remote_send_report() {
 
     hash="${file}.sha256"
     qdir=$(quote_remote_path "$dir")
+    remote_base=${dir%/}
+    remote_file_target="$user@$host:$remote_base/$(basename "$file")"
+    remote_hash_target="$user@$host:$remote_base/$(basename "$hash")"
 
     echo "[*] Sending to $user@$host:$dir"
 
@@ -57,7 +90,7 @@ remote_send_report() {
     }
 
     scp -p -o ConnectTimeout=10 \
-        "$file" "$user@$host:'$qdir/$(basename "$file")'" || {
+        "$file" "$remote_file_target" || {
         echo "[!] File transfer failed"
         return 1
     }
@@ -65,7 +98,7 @@ remote_send_report() {
     # this part will send the hash if it exists
     if [ -f "$hash" ]; then
         scp -p -o ConnectTimeout=10 \
-            "$hash" "$user@$host:'$qdir/$(basename "$hash")'" || {
+            "$hash" "$remote_hash_target" || {
             echo "[!] Hash transfer failed"
             return 1
         }

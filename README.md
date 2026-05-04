@@ -101,6 +101,9 @@ Main values to update:
 - `REMOTE_USER`, `REMOTE_HOST`, and `REMOTE_REPORT_DIR` for SSH transfer
 - `CPU_ALERT_THRESHOLD`, `RAM_ALERT_THRESHOLD`, and `DISK_ALERT_THRESHOLD` for alerts
 
+For remote copy, a relative `REMOTE_REPORT_DIR` like `reports` is recommended.
+It creates the folder inside the selected remote user's home directory.
+
 ---
 
 ## How to Run
@@ -226,6 +229,8 @@ Behavior:
 - Creates the remote report directory if needed
 - Copies the report with `scp`
 - Copies the matching `.sha256` file too when it exists
+
+Tip: using `reports` as the remote directory sends files to `~/reports` on the remote host.
 
 ### Pull a remote snapshot
 

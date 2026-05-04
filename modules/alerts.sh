@@ -100,9 +100,15 @@ check_alerts() {
 send_alert() {
     local alert_type=$1
     local message=$2
+    local from_address
 
     if [ -z "$RECIPIENT_EMAIL" ]; then
         echo "[!] No recipient email configured for alerts"
+        return 1
+    fi
+
+    if ! declare -F run_msmtp >/dev/null 2>&1; then
+        echo "[!] Email module not loaded, cannot send alert"
         return 1
     fi
 
@@ -111,9 +117,13 @@ send_alert() {
         return 1
     fi
 
+    from_address=$(email_from_address)
+
     {
+        [ -n "$from_address" ] && echo "From: $from_address"
         echo "To: $RECIPIENT_EMAIL"
         echo "Subject: [sys_audit] ALERT: ${alert_type} on $(hostname)"
+        echo "Date: $(LC_ALL=C date -R)"
         echo
         echo "SYSTEM ALERT"
         echo "============"
@@ -121,7 +131,10 @@ send_alert() {
         echo "Date    : $(date)"
         echo "Alert   : $alert_type"
         echo "Message : $message"
-    } | msmtp --account="$MSMTP_ACCOUNT" "$RECIPIENT_EMAIL" >/dev/null 2>&1
+    } | run_msmtp "$RECIPIENT_EMAIL" || {
+        echo "[!] Alert email failed: $alert_type"
+        return 1
+    }
 
     echo "[+] Alert email sent: $alert_type"
 }

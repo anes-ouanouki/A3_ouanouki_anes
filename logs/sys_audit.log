@@ -42,3 +42,12 @@
 [2026-04-24 11:14:00] [CRON_DONE] kali : Automated audit completed
 [2026-04-24 11:14:31] [EXIT] kali : User exited menu
 [2026-04-24 11:22:53] [REPORT_FULL] kali : Generated
+[2026-05-04 08:59:12] [REPORT_ALL] kali : Generated
+[2026-05-04 09:07:02] [EXIT] kali : User exited menu
+[2026-05-04 09:09:21] [EXIT] kali : User exited menu
+[2026-05-04 09:15:15] [EMAIL_FAILED] kali : Report: /run/media/kada/New Volume/OS-project/OS-PROJECT-S2/reports/short_kali_20260504_085909.txt -> kada9anes@gmail.com
+[2026-05-04 09:20:30] [EMAIL_FAILED] kali : Report: /run/media/kada/New Volume/OS-project/OS-PROJECT-S2/reports/short_kali_20260504_085909.txt -> kada9anes@gmail.com
+[2026-05-04 09:20:56] [EMAIL_FAILED] kali : Report: /run/media/kada/New Volume/OS-project/OS-PROJECT-S2/reports/short_kali_20260504_085909.txt -> kada9anes@gmail.com
+[2026-05-04 07:19:37] [EMAIL_SENT] kali : Report: /run/media/kada/New Volume/OS-project/OS-PROJECT-S2/reports/short_kali_20260504_085909.txt -> kada9anes@gmail.com
+[2026-05-04 07:21:06] [EMAIL_SENT] kali : Report: /run/media/kada/New Volume/OS-project/OS-PROJECT-S2/reports/short_kali_20260504_085909.txt -> kada9anes@gmail.com
+[2026-05-04 07:21:40] [EXIT] kali : User exited menu

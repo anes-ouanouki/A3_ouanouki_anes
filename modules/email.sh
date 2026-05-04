@@ -17,6 +17,63 @@ check_email_deps() {
         echo "[!] base64 is not available"
         return 1
     fi
+
+    if [ ! -f "$(resolve_msmtp_config)" ]; then
+        echo "[!] msmtp config not found: $(resolve_msmtp_config)"
+        return 1
+    fi
+}
+
+resolve_msmtp_config() {
+    local config_path=${MSMTP_CONFIG:-}
+
+    if [ -n "$config_path" ]; then
+        case "$config_path" in
+            /*) printf '%s\n' "$config_path" ;;
+            ./*) printf '%s\n' "${SCRIPT_DIR:-.}/${config_path#./}" ;;
+            *) printf '%s\n' "${SCRIPT_DIR:-.}/$config_path" ;;
+        esac
+        return
+    fi
+
+    if [ -n "${SCRIPT_DIR:-}" ] && [ -f "$SCRIPT_DIR/.msmtprc" ]; then
+        printf '%s\n' "$SCRIPT_DIR/.msmtprc"
+        return
+    fi
+
+    printf '%s\n' "$HOME/.msmtprc"
+}
+
+email_from_address() {
+    [ -n "${EMAIL_FROM:-}" ] && printf '%s\n' "$EMAIL_FROM"
+}
+
+run_msmtp() {
+    local recipient=$1
+    local config_file
+    local error_file
+    local -a msmtp_args
+
+    config_file=$(resolve_msmtp_config)
+    error_file=$(mktemp) || return 1
+    msmtp_args=()
+
+    [ -f "$config_file" ] && msmtp_args+=("--file=$config_file")
+    [ -n "${MSMTP_ACCOUNT:-}" ] && msmtp_args+=("--account=$MSMTP_ACCOUNT")
+
+    if msmtp "${msmtp_args[@]}" "$recipient" 2>"$error_file"; then
+        rm -f "$error_file"
+        return 0
+    fi
+
+    if [ -s "$error_file" ]; then
+        sed 's/^/[msmtp] /' "$error_file"
+    else
+        echo "[msmtp] Delivery failed"
+    fi
+
+    rm -f "$error_file"
+    return 1
 }
 # This helper chooses the attachment content type.
 # it keeps text and html reports readable to mail clients,
@@ -46,6 +103,7 @@ send_report() {
     local boundary
     local report_mime
     local hash_mime
+    local from_address
 
     if [ -z "$report_input" ]; then
         echo "[!] No report file specified"
@@ -68,6 +126,7 @@ send_report() {
     report_name=$(basename "$report_file")
     hash_name=$(basename "$hash_file")
     report_mime=$(attachment_mime_type "$report_file")
+    from_address=$(email_from_address)
     if [ -f "$hash_file" ]; then
         hash_mime=$(attachment_mime_type "$hash_file")
     fi
@@ -91,8 +150,10 @@ EOF
     # it keeps the mail body short and puts the files in attachments,
     # so long reports do not flood the message content itself.
     {
+        [ -n "$from_address" ] && echo "From: $from_address"
         echo "To: $recipient"
         echo "Subject: $subject"
+        echo "Date: $(LC_ALL=C date -R)"
         echo "MIME-Version: 1.0"
         echo "Content-Type: multipart/mixed; boundary=\"$boundary\""
         echo
@@ -121,7 +182,7 @@ EOF
 
         echo
         echo "--$boundary--"
-    } | msmtp --account="$MSMTP_ACCOUNT" "$recipient" >/dev/null 2>&1
+    } | run_msmtp "$recipient"
 
     if [ $? -eq 0 ]; then
         echo "[+] Email sent to: $recipient"
@@ -145,36 +206,33 @@ configure_email() {
     echo "1. Install msmtp:"
     echo "   sudo apt install msmtp msmtp-mta"
     echo
-    echo "2. Create ~/.msmtprc and add:"
+    echo "2. Create a mail config file and add:"
     echo
     cat <<'CONF'
-# ~/.msmtprc
+# ./.msmtprc
 defaults
     auth           on
     tls            on
     tls_trust_file /etc/ssl/certs/ca-certificates.crt
-    logfile        ~/.msmtp.log
 
-account gmail
-    host           smtp.gmail.com
+account yahoo
+    host           smtp.mail.yahoo.com
     port           587
-    from           your_email@gmail.com
-    user           your_email@gmail.com
-    password       YOUR_APP_PASSWORD_HERE
+    from           your_email@yahoo.com
+    user           your_email@yahoo.com
+    password       YOUR_YAHOO_APP_PASSWORD
 
-account default : gmail
+account default : yahoo
 CONF
     echo ""
     echo "4. Set permissions (REQUIRED - msmtp refuses world-readable configs):"
-    echo "   chmod 600 ~/.msmtprc"
+    echo "   chmod 600 ./.msmtprc"
     echo ""
-    echo "5. Gmail: Create App Password at:"
-    echo "   https://myaccount.google.com/apppasswords"
-    echo "   (Requires 2-Step Verification enabled)"
+    echo "5. Yahoo: Create an app password in your account security settings"
     echo ""
     echo "6. Test:"
-    echo "   echo 'Test email' | msmtp --account=gmail your_email@gmail.com"
+    echo "   echo 'Test email' | msmtp --file=./.msmtprc --account=yahoo your_email@yahoo.com"
     echo ""
-    echo "7. Update config.cfg with your RECIPIENT_EMAIL"
+    echo "7. Update config.cfg with RECIPIENT_EMAIL, EMAIL_FROM, MSMTP_ACCOUNT, and MSMTP_CONFIG"
     echo "============================================================"
 }
